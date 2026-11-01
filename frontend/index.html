@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>solmu</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+</head>
+<body>
+  <pre class="logo">
+   ███████╗ ██████╗ ██╗     ███╗   ███╗██╗   ██╗
+   ██╔════╝██╔═══██╗██║     ████╗ ████║██║   ██║
+   ███████╗██║   ██║██║     ██╔████╔██║██║   ██║
+   ╚════██║██║   ██║██║     ██║╚██╔╝██║██║   ██║
+   ███████║╚██████╔╝███████╗██║ ╚═╝ ██║╚██████╔╝
+   ╚══════╝ ╚═════╝ ╚══════╝╚═╝     ╚═╝ ╚═════╝
+  </pre>
+  <p class="tagline">// distributed ephemeral transfer · n-of-n shares · 24h ttl</p>
+
+  <section>
+    <h2>nodes</h2>
+    <ul id="node-status"></ul>
+    <div class="row" style="margin-top: 12px;">
+      <button id="refresh-status-btn">refresh status</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>send</h2>
+    <div class="row">
+      <input type="file" id="file-input">
+      <button id="upload-btn">upload</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>catalogue</h2>
+    <ul id="catalogue"></ul>
+    <div class="row" style="margin-top: 12px;">
+      <button id="refresh-btn">refresh</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>log</h2>
+    <pre id="log"></pre>
+  </section>
+
+  <script src="/static/bundle.js"></script>
+</body>
+</html>

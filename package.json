@@ -1,0 +1,12 @@
+{
+  "name": "solmu",
+  "private": true,
+  "scripts": {
+    "build": "esbuild frontend/src/main.ts --bundle --outfile=frontend/dist/bundle.js",
+    "watch": "esbuild frontend/src/main.ts --bundle --outfile=frontend/dist/bundle.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0",
+    "shamir-secret-sharing": "^0.0.4"
+  }
+}
