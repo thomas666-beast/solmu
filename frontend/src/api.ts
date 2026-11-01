@@ -15,6 +15,7 @@ export interface FileEntry {
   shards: Record<string, string>;
   ts: number;
   hash?: string;
+  name?: string;
 }
 
 export interface BroadcastResult {
@@ -71,4 +72,41 @@ export async function fetchRemoteConfig(n: NodeInfo): Promise<Config> {
   const r = await fetch(`${base(n)}/remote-config`);
   if (!r.ok) throw new Error(`remote-config ${n.id} failed: ${r.status}`);
   return r.json();
+}
+
+export interface ShardMap {
+  [nodeId: string]: string;
+}
+
+export interface UploadResponse {
+  size: number;
+  file_id: string;
+  hash: string;
+  shards: ShardMap;
+  distribution: Record<string, number | string>;
+}
+
+export async function uploadFileRaw(n: NodeInfo, file: File): Promise<UploadResponse> {
+  const r = await fetch(`${base(n)}/upload`, {
+    method: "POST",
+    body: file,
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-Filename": file.name,
+    },
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(`upload to node ${n.id} failed: ${r.status} ${text}`);
+  }
+  return r.json();
+}
+
+export async function reconstruct(n: NodeInfo, fileId: string): Promise<Blob> {
+  const r = await fetch(`${base(n)}/reconstruct/${encodeURIComponent(fileId)}`);
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(`reconstruct failed: ${r.status} ${text}`);
+  }
+  return await r.blob();
 }

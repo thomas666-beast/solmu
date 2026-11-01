@@ -8,6 +8,9 @@ from storage import save_shard, load_shard
 from pathlib import Path
 from flask_cors import CORS
 from storage import save_shard, load_shard, load_catalogue, save_catalogue
+from upload import new_upload_id, stream_request_to_file, delete_incoming, incoming_path
+import distribute
+import tempfile
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -18,6 +21,93 @@ CORS(app)
 CATALOGUE = load_catalogue()
 REMOTE_CONFIG = {"version": None, "nodes": []}
 MAIN_NODE_ID = 1
+
+
+@app.route("/reconstruct/<file_id>", methods=["GET"])
+def reconstruct(file_id):
+    entry = CATALOGUE.get(file_id)
+    if entry is None:
+        return jsonify({"error": "unknown file_id"}), 404
+
+    shards = entry["shards"]
+    cfg = load_config()
+
+    tmpdir = Path(tempfile.mkdtemp(prefix="solmu-recon-"))
+    local_paths: list[Path] = []
+
+    try:
+        for node_id_str, shard_id in shards.items():
+            node_id = int(node_id_str)
+            local = load_shard(shard_id)
+            if local is not None:
+                p = tmpdir / f"local-{node_id}.dat"
+                p.write_bytes(local)
+                local_paths.append(p)
+            else:
+                node = get_node(cfg, node_id)
+                url = f"http://{node['host']}:{node['port']}/shard/{shard_id}"
+                try:
+                    r = requests.get(url, timeout=30)
+                    if not r.ok:
+                        return jsonify({"error": f"shard missing on node {node_id}"}), 502
+                    p = tmpdir / f"remote-{node_id}.dat"
+                    p.write_bytes(r.content)
+                    local_paths.append(p)
+                except requests.RequestException as e:
+                    return jsonify({"error": f"node {node_id} unreachable: {e}"}), 502
+
+        out = tmpdir / "reconstructed.bin"
+        distribute.combine_shares_to_file(local_paths, out, None)
+
+        import hashlib
+        h = hashlib.sha256()
+        with open(out, "rb") as f:
+            for block in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(block)
+        if entry.get("hash") and h.hexdigest() != entry["hash"]:
+            return jsonify({"error": "hash mismatch"}), 500
+
+    except Exception:
+        # cleanup on any pre-streaming error
+        for p in tmpdir.iterdir():
+            p.unlink(missing_ok=True)
+        tmpdir.rmdir()
+        raise
+
+    def generate():
+        try:
+            with open(out, "rb") as f:
+                while True:
+                    block = f.read(1024 * 1024)
+                    if not block:
+                        break
+                    yield block
+        finally:
+            for p in tmpdir.iterdir():
+                p.unlink(missing_ok=True)
+            tmpdir.rmdir()
+
+    filename = entry.get("name", "download.bin")
+    return Response(
+        generate(),
+        mimetype="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    original_name = request.headers.get("X-Filename", "upload.bin")
+    upload_id = new_upload_id()
+    size = stream_request_to_file(request.stream, upload_id)
+    if size == 0:
+        delete_incoming(upload_id)
+        return jsonify({"error": "empty body"}), 400
+    try:
+        result = distribute.split_and_distribute(upload_id, original_name, app.config["NODE_ID"])
+    except Exception as e:
+        delete_incoming(upload_id)
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"size": size, **result}), 201
 
 @app.route("/")
 def index():
