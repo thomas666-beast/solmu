@@ -6,27 +6,21 @@ from pathlib import Path
 
 import requests
 
-from config import load_config, get_node
+import config
+import progress as progress_store
+from config import get_node, load_config
 from storage import save_shard
-from upload import incoming_path, delete_incoming
-from sss import PRIME, split_secret, reconstruct_secret, lagrange_coeffs_at_zero
+from upload import delete_incoming, incoming_path
+from sss import PRIME, lagrange_coeffs_at_zero, reconstruct_secret, split_secret
 
 MAIN_NODE_ID = 1
-
-# None = n-of-n (every node needed). Set e.g. THRESHOLD = 2 for 2-of-n.
-# Note: every node still stores a full copy of the ciphertext, so this only
-# controls how many KEY shares are needed; losing nodes never loses data as
-# long as THRESHOLD shares survive.
 THRESHOLD = None
 
-BLOCK = 4 * 1024 * 1024  # 4 MiB streaming block
-KEY_BYTES = 32           # fits easily under the 2048-bit prime
+BLOCK = 4 * 1024 * 1024
+KEY_BYTES = 32
 NONCE_BYTES = 16
-Y_BYTES = 256            # a share y value is < PRIME, so <= 256 bytes
+Y_BYTES = 256
 
-# Share file layout:
-#   header: magic(4) | x(1) | nonce(16) | y(256) | plaintext_len(8)
-#   body  : ciphertext (identical in every share)
 MAGIC = b"SSS2"
 HEADER = struct.Struct(f">4sB{NONCE_BYTES}s{Y_BYTES}sQ")
 
@@ -43,22 +37,15 @@ def sha256_file(path: Path) -> str:
 
 
 def _crypt_block(data: bytes, key: bytes, nonce: bytes, counter: int) -> bytes:
-    """XOR `data` with a SHAKE-256 keystream. Encrypt == decrypt.
-
-    Keystream block `counter` = SHAKE256(key || nonce || counter). The nonce
-    is random per file, so a key is never reused with the same stream.
-    """
     ks = hashlib.shake_256(key + nonce + counter.to_bytes(8, "big")).digest(len(data))
-    return (int.from_bytes(data, "big") ^ int.from_bytes(ks, "big")).to_bytes(len(data), "big")
+    return (
+        int.from_bytes(data, "big") ^ int.from_bytes(ks, "big")
+    ).to_bytes(len(data), "big")
 
 
-def split_file_to_shares(src: Path, shares_dir: Path, n: int, k: int | None = None) -> list[Path]:
-    """Encrypt the file once with a random 256-bit key, Shamir-split the KEY
-    (k-of-n, via sss.py), and write one share file per node.
-
-    Fast: Shamir runs once per file (32 bytes), not once per chunk. The bulk
-    data only goes through a stream cipher and plain file I/O.
-    """
+def split_file_to_shares(
+    src: Path, shares_dir: Path, n: int, k: int | None = None
+) -> list[Path]:
     k = n if k is None else k
     if not 1 <= k <= n:
         raise ValueError("require 1 <= k <= n")
@@ -103,13 +90,9 @@ def _read_header(f):
     return x, nonce, int.from_bytes(y_raw, "big"), size
 
 
-def combine_shares_to_file(share_paths: list[Path], dst: Path, n: int | None = None) -> None:
-    """Reverse of split_file_to_shares. Pass at least k share files, in any
-    order. `n` is unused and kept only for call compatibility.
-
-    With fewer than k shares the key comes out wrong; compare the result's
-    sha256 against the stored file hash to detect that.
-    """
+def combine_shares_to_file(
+    share_paths: list[Path], dst: Path, n: int | None = None
+) -> None:
     handles = [open(p, "rb") for p in share_paths]
     try:
         headers = [_read_header(h) for h in handles]
@@ -129,7 +112,6 @@ def combine_shares_to_file(share_paths: list[Path], dst: Path, n: int | None = N
         except OverflowError:
             raise ValueError("not enough shares to recover the key") from None
 
-        # Ciphertext is identical in every share, so read it from just one.
         src = handles[0]
         remaining = size
         counter = 0
@@ -146,7 +128,9 @@ def combine_shares_to_file(share_paths: list[Path], dst: Path, n: int | None = N
             h.close()
 
 
-def split_and_distribute(upload_id: str, original_name: str, sender_node_id: int) -> dict:
+def split_and_distribute(
+    upload_id: str, original_name: str, sender_node_id: int
+) -> dict:
     cfg = load_config()
     n = len(cfg["nodes"])
     if n < 2:
@@ -156,11 +140,15 @@ def split_and_distribute(upload_id: str, original_name: str, sender_node_id: int
     if not src.exists():
         raise FileNotFoundError(f"incoming file {upload_id} not found")
 
+    progress_store.emit(upload_id, "received", {"size": src.stat().st_size})
+
     file_hash = sha256_file(src)
     file_id = f"{int(time.time() * 1000)}-{original_name}"
 
     shares_dir = src.parent / f"{upload_id}-shares"
     try:
+        progress_store.emit(upload_id, "encrypting")
+        progress_store.emit(upload_id, "splitting")
         share_paths = split_file_to_shares(src, shares_dir, n, THRESHOLD)
 
         shard_map: dict[str, str] = {}
@@ -170,6 +158,7 @@ def split_and_distribute(upload_id: str, original_name: str, sender_node_id: int
             share_id = f"{file_id}::{node['id']}"
             shard_map[str(node["id"])] = share_id
             share_path = share_paths[i]
+            progress_store.emit(upload_id, "sending", {"node_id": node["id"]})
 
             if node["id"] == sender_node_id:
                 save_shard(share_id, share_path.read_bytes())
@@ -180,7 +169,10 @@ def split_and_distribute(upload_id: str, original_name: str, sender_node_id: int
                     r = requests.post(
                         url,
                         data=f,
-                        headers={"Content-Type": "application/octet-stream"},
+                        headers={
+                            "Content-Type": "application/octet-stream",
+                            "X-Solmu-Token": config.cluster_token(),
+                        },
                         timeout=60,
                     )
                 results[str(node["id"])] = r.status_code
@@ -194,9 +186,19 @@ def split_and_distribute(upload_id: str, original_name: str, sender_node_id: int
             "name": original_name,
         }
 
+        progress_store.emit(upload_id, "broadcasting")
         main = get_node(cfg, MAIN_NODE_ID)
         broadcast_url = f"http://{main['host']}:{main['port']}/broadcast"
-        requests.post(broadcast_url, json=entry, timeout=10)
+        requests.post(
+            broadcast_url,
+            json=entry,
+            headers={"X-Solmu-Token": config.cluster_token()},
+            timeout=10,
+        )
+
+        progress_store.emit(
+            upload_id, "ready", {"file_id": file_id, "hash": file_hash}
+        )
 
         return {
             "file_id": file_id,
@@ -204,6 +206,9 @@ def split_and_distribute(upload_id: str, original_name: str, sender_node_id: int
             "shards": shard_map,
             "distribution": results,
         }
+    except Exception as e:
+        progress_store.emit(upload_id, "error", {"message": str(e)})
+        raise
     finally:
         delete_incoming(upload_id)
         if shares_dir.exists():

@@ -13,5 +13,15 @@ def get_node(cfg, node_id):
             return n
     raise ValueError(f"node {node_id} not in config")
 
+def cluster_token() -> str:
+    return load_config().get("token", "")
+
 def current_version():
     return load_config()["version"]
+
+def basic_auth_credentials():
+    auth = load_config().get("auth", {})
+    return auth.get("user", ""), auth.get("password", "")
+
+def secret_key() -> str:
+    return load_config().get("secret_key", "")

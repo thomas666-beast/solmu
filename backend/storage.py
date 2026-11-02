@@ -57,3 +57,10 @@ def save_catalogue(cat: dict) -> None:
     with open(tmp, "rb") as f:
         os.fsync(f.fileno())
     os.rename(tmp, CATALOGUE_PATH)
+
+def delete_shard(shard_id: str) -> bool:
+    path = _shard_path(shard_id)
+    if not path.exists():
+        return False
+    path.unlink()
+    return True
