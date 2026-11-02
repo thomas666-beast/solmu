@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "token": "change-me-to-a-long-random-string",
+  "secret_key": "change-me-to-another-long-random-string",
+  "nodes": [
+    { "id": 1, "host": "127.0.0.1", "port": 9001 },
+    { "id": 2, "host": "127.0.0.1", "port": 9002 },
+    { "id": 3, "host": "127.0.0.1", "port": 9003 },
+    { "id": 4, "host": "127.0.0.1", "port": 9004 },
+    { "id": 5, "host": "127.0.0.1", "port": 9005 }
+  ]
+}

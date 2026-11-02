@@ -2,11 +2,10 @@
   "name": "solmu",
   "private": true,
   "scripts": {
-    "build": "esbuild frontend/src/main.ts --bundle --outfile=frontend/dist/bundle.js",
-    "watch": "esbuild frontend/src/main.ts --bundle --outfile=frontend/dist/bundle.js --watch"
+    "build": "esbuild frontend/src/main.ts frontend/src/login.ts frontend/src/register.ts --bundle --outdir=frontend/dist",
+    "watch": "esbuild frontend/src/main.ts frontend/src/login.ts frontend/src/register.ts --bundle --outdir=frontend/dist --watch"
   },
   "devDependencies": {
-    "esbuild": "^0.20.0",
-    "shamir-secret-sharing": "^0.0.4"
+    "esbuild": "^0.20.0"
   }
 }

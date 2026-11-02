@@ -6,46 +6,80 @@
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
 </head>
-<body>
-  <pre class="logo">
+<body class="app-layout">
+  <header>
+    <pre class="logo">
    ███████╗ ██████╗ ██╗     ███╗   ███╗██╗   ██╗
    ██╔════╝██╔═══██╗██║     ████╗ ████║██║   ██║
    ███████╗██║   ██║██║     ██╔████╔██║██║   ██║
    ╚════██║██║   ██║██║     ██║╚██╔╝██║██║   ██║
    ███████║╚██████╔╝███████╗██║ ╚═╝ ██║╚██████╔╝
    ╚══════╝ ╚═════╝ ╚══════╝╚═╝     ╚═╝ ╚═════╝
-  </pre>
-  <p class="tagline">// distributed ephemeral transfer · n-of-n shares · 24h ttl</p>
-
-  <section>
-    <h2>nodes</h2>
-    <ul id="node-status"></ul>
-    <div class="row" style="margin-top: 12px;">
-      <button id="refresh-status-btn">refresh status</button>
+    </pre>
+    <div class="session-bar">
+      <span class="tagline">$ // distributed ephemeral transfer · n-of-n shares · 24h ttl <span class="blink">▊</span></span>
+      <div class="session-controls">
+        <span id="session-user" class="dim">session active</span>
+        <button id="logout-btn">logout</button>
+      </div>
     </div>
-  </section>
+  </header>
 
-  <section>
-    <h2>send</h2>
-    <div class="row">
-      <input type="file" id="file-input">
-      <button id="upload-btn">upload</button>
-    </div>
-  </section>
+  <nav class="tabs">
+    <button class="tab-btn active" data-target="tab-upload">SEND</button>
+    <button class="tab-btn" data-target="tab-catalogue">CATALOGUE</button>
+    <button class="tab-btn" data-target="tab-nodes">NODES</button>
+    <button class="tab-btn" data-target="tab-log">LOG</button>
+  </nav>
 
-  <section>
-    <h2>catalogue</h2>
-    <ul id="catalogue"></ul>
-    <div class="row" style="margin-top: 12px;">
-      <button id="refresh-btn">refresh</button>
-    </div>
-  </section>
+  <main class="tab-content-container">
+    <!-- SEND TAB -->
+    <section id="tab-upload" class="tab-pane active">
+      <div class="pane-header">upload</div>
+      <div class="pane-body">
+        <div class="row" style="margin-bottom: 24px;">
+          <input type="file" id="file-input">
+          <button id="upload-btn">upload</button>
+        </div>
+        <div id="upload-status" class="dim" style="font-size: 11px;">waiting for file...</div>
+      </div>
+    </section>
 
-  <section>
-    <h2>log</h2>
-    <pre id="log"></pre>
-  </section>
+    <!-- CATALOGUE TAB -->
+    <section id="tab-catalogue" class="tab-pane">
+      <div class="pane-header">
+        catalogue
+        <button id="refresh-btn" style="margin-left: 16px; padding: 2px 8px; font-size: 10px;">refresh</button>
+      </div>
+      <div class="pane-body list-scroll">
+        <ul id="catalogue"></ul>
+      </div>
+    </section>
 
-  <script src="/static/bundle.js"></script>
+    <!-- NODES TAB -->
+    <section id="tab-nodes" class="tab-pane">
+      <div class="pane-header">
+        nodes
+        <button id="refresh-status-btn" style="margin-left: 16px; padding: 2px 8px; font-size: 10px;">refresh</button>
+      </div>
+      <div class="pane-body list-scroll">
+        <ul id="node-status"></ul>
+      </div>
+    </section>
+
+    <!-- LOG TAB -->
+    <section id="tab-log" class="tab-pane">
+      <div class="pane-header">event log</div>
+      <div class="pane-body list-scroll" style="padding: 0;">
+        <pre id="log" style="border: none; margin: 0; height: 100%;"></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span class="dim">/* solmu · mit license · no db · n-of-n · in transit only */</span>
+  </footer>
+
+  <script src="/static/main.js"></script>
 </body>
 </html>

@@ -4,10 +4,12 @@ export async function downloadFile(
   entry: FileEntry,
   cfg: Config
 ): Promise<{ blob: Blob; filename: string }> {
-  // Talk to the first node in the config; it will gather shares from peers.
   const node = cfg.nodes[0];
   const blob = await reconstruct(node, entry.file_id);
-  const filename = entry.name || entry.file_id.split("-").slice(1).join("-") || "download.bin";
+  const filename =
+    entry.name ||
+    entry.file_id.split("-").slice(1).join("-") ||
+    "download.bin";
   return { blob, filename };
 }
 

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>solmu · register</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+</head>
+<body>
+  <div class="auth-wrapper">
+    <header>
+      <pre class="logo">
+   ███████╗ ██████╗ ██╗     ███╗   ███╗██╗   ██╗
+   ██╔════╝██╔═══██╗██║     ████╗ ████║██║   ██║
+   ███████╗██║   ██║██║     ██╔████╔██║██║   ██║
+   ╚════██║██║   ██║██║     ██║╚██╔╝██║██║   ██║
+   ███████║╚██████╔╝███████╗██║ ╚═╝ ██║╚██████╔╝
+   ╚══════╝ ╚═════╝ ╚══════╝╚═╝     ╚═╝ ╚═════╝
+      </pre>
+      <p class="tagline">// register <span class="blink">▊</span></p>
+    </header>
+
+    <section class="auth-box">
+      <div class="pane-header">· NEW ACCOUNT</div>
+      <div class="pane-body">
+        <div class="row">
+          <input type="text" id="username" class="solmu-input" placeholder="username" autocomplete="username">
+          <input type="password" id="password" class="solmu-input" placeholder="password" autocomplete="new-password">
+          <button id="register-btn">register</button>
+        </div>
+        <p class="dim" style="margin-top: 20px;">
+          already have an account? <a href="/login">login</a>
+        </p>
+        <p id="msg"></p>
+      </div>
+    </section>
+  </div>
+  <script src="/static/register.js"></script>
+</body>
+</html>

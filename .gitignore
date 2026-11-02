@@ -42,3 +42,7 @@ catalogue.json
 # Logs
 *.log
 logs/
+
+# solmu secrets
+config/nodes.json
+config/users.json
